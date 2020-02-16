@@ -1,0 +1,24 @@
+18.12:
+contours are cool
+19.12:
+Switched from haarcascade to contours
+8.1:
+    GOALS:
+        - (CLEARED 8.1) Make the tracking work on the hole, not the hand.
+        - (CLEARED 9.1) Learn cascade hierarchy, implement it.
+        - (CLEARED 19.1) Fix not registering when had is far away due to area differences (ADDED 9.1)
+        - Implement brightness control in dark areas (ADDED 10.1 HACKATHON)
+        - (CLEARED 19.1) Investigate the possibility of different gesture detection than of ok sign, perhaps implement.
+        - Activation on computer wakeup, or activation passively.
+5.2:
+    New goals after talk with eran from general motors:
+        - (CLEARED 6.2) Investigate Histogram equalization and Otsu technique
+        - (CLEARED 6.2) Install python 64 bit, allowing to install pytorch through this link: https://download.pytorch.org/whl/cpu/torch-1.4.0%2Bcpu-cp37-cp37m-win_amd64.whl
+        - Investigate how transferal learning works
+        - Use the neural network models in torchvision's tutorial
+        - Utilize a hand detection class
+
+    Steps in learning:
+        6.2:
+            (CLEARED 6.2) Wrote program to capture images and masks for training data
+            (ADDED 9.2) try and implement learning model from pytorch's website

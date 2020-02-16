@@ -1,0 +1,18 @@
+Production Backlog:
+    - Classify between a few gestures of a naked human hand
+    - Track the human hand consistently
+    - Move the mouse relative to the human hand location and press mouse button in accordance to the gestures of the hand
+Sprint backlog January:
+    - (CLEARED 8.1) Make the tracking work on the hole, not the hand.
+    - (CLEARED 9.1) Learn cascade hierarchy, implement it.
+    - (CLEARED 19.1) Fix not registering when had is far away due to area differences (ADDED 9.1)
+    - Implement brightness control in dark areas (ADDED 10.1 HACKATHON)
+    - (CLEARED 19.1) Investigate the possibility of different gesture detection than of ok sign, perhaps implement.
+    - Activation on computer wakeup, or activation passively.
+Sprint backlog February:
+    - (CLEARED 6.2) Investigate Histogram equalization and Otsu technique
+    - (CLEARED 6.2) Install python 64 bit, allowing to install pytorch through this link: https://download.pytorch.org/whl/cpu/torch-1.4.0%2Bcpu-cp37-cp37m-win_amd64.whl
+    - (CLEARED 6.2) Write a program to capture images and masks for training data
+    - (ADDED 9.2) try and implement learning model from pytorch's website
+    - Improve model somehow
+    - If model consistent, make it move the mouse
