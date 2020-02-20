@@ -47,37 +47,40 @@ class DataSet(object):
         # ensure that they are aligned
         self.imgs = list(sorted(os.listdir(os.path.join(root, "Images"))))
         self.masks = list(sorted(os.listdir(os.path.join(root, "Masks"))))
+        self.new_masks = list(sorted(os.listdir(os.path.join(root, "newMasks"))))
 
     def __getitem__(self, idx):
         # load images ad masks
         img_path = os.path.join(self.root, "Images", self.imgs[idx])
         mask_path = os.path.join(self.root, "Masks", self.masks[idx])
+        newMask_path = os.path.join(self.root, "newMasks", self.masks[idx])
         img = Image.open(img_path).convert("RGB")
         # note that we haven't converted the mask to RGB,
         # because each color corresponds to a different instance
         # with 0 being background
         mask = Image.open(mask_path)
+        newMask = Image.open(newMask_path)
         # convert the PIL Image into a numpy array
         mask = np.array(mask)
-        # gray = cv2.cvtColor(mask, cv2.COLOR_BGR2GRAY)
-        # thresh = 127
-        # im_bw = cv2.threshold(gray, thresh, 255, cv2.THRESH_BINARY)[1]
-        masks = [mask]
-        # print(mask)
-        # instances are encoded as different colors
-        # first id is the background, so remove it
+        newMask = np.array(newMask)
+
+        obj_ids = np.unique(newMask)
+        obj_ids = obj_ids[1:]
 
         # split the color-encoded mask into a set
         # of binary masks
+        masks = mask == obj_ids[:, None, None]
+
         # get bounding box coordinates for each mask
-        num_objs = 1
+        num_objs = len(obj_ids)
         boxes = []
         for i in range(num_objs):
-            pos = np.where(masks[i])
+            pos = np.where(mask)
             xmin = np.min(pos[1])
             xmax = np.max(pos[1])
             ymin = np.min(pos[0])
             ymax = np.max(pos[0])
+            print(xmin, ymin, xmax, ymax)
             boxes.append([xmin, ymin, xmax, ymax])
 
         # convert everything into a torch.Tensor
