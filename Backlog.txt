@@ -13,6 +13,7 @@ Sprint backlog February:
     - (CLEARED 6.2) Investigate Histogram equalization and Otsu technique
     - (CLEARED 6.2) Install python 64 bit, allowing to install pytorch through this link: https://download.pytorch.org/whl/cpu/torch-1.4.0%2Bcpu-cp37-cp37m-win_amd64.whl
     - (CLEARED 6.2) Write a program to capture images and masks for training data
-    - (ADDED 9.2) try and implement learning model from pytorch's website
-    - Improve model somehow
+    - (CLEARED 20.2) Make model not crash on startup
+    - (ADDED 20.2) Get some sort of network
+    - (ADDED 20.2) Get a good network
     - If model consistent, make it move the mouse

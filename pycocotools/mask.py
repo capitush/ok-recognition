@@ -82,7 +82,7 @@ def encode(bimask):
         return _mask.encode(bimask)
     elif len(bimask.shape) == 2:
         h, w = bimask.shape
-        return _mask.encode(bimask.reshape((h, w, 1), order='F'))[0]
+        return _mask.encode(bimask.reshape((h, w, 1), order='F'))
 
 def decode(rleObjs):
     if type(rleObjs) == list:
