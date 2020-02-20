@@ -114,12 +114,13 @@ class DataSet(object):
 def main():
     # train on the GPU or on the CPU, if a GPU is not available
     device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
+    print(device)
 
     # our dataset has two classes only - background and person
     num_classes = 2
     # use our dataset and defined transformations
-    dataset = DataSet('Training_data', get_transform(train=True))
-    dataset_test = DataSet('Training_data', get_transform(train=False))
+    dataset = DataSet('Small_data', get_transform(train=True))
+    dataset_test = DataSet('Small_data', get_transform(train=False))
 
     # split the dataset in train and test set
     indices = torch.randperm(len(dataset)).tolist()
@@ -159,7 +160,9 @@ def main():
         # update the learning rate
         lr_scheduler.step()
         # evaluate on the test dataset
+        print("Evaluating...")
         evaluate(model, data_loader_test, device=device)
+        print("Evaluated!")
 
     print("That's it!")
 
