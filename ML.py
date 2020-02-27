@@ -47,24 +47,21 @@ class DataSet(object):
         # ensure that they are aligned
         self.imgs = list(sorted(os.listdir(os.path.join(root, "Images"))))
         self.masks = list(sorted(os.listdir(os.path.join(root, "Masks"))))
-        self.new_masks = list(sorted(os.listdir(os.path.join(root, "newMasks"))))
 
     def __getitem__(self, idx):
         # load images ad masks
         img_path = os.path.join(self.root, "Images", self.imgs[idx])
         mask_path = os.path.join(self.root, "Masks", self.masks[idx])
-        newMask_path = os.path.join(self.root, "newMasks", self.masks[idx])
         img = Image.open(img_path).convert("RGB")
         # note that we haven't converted the mask to RGB,
         # because each color corresponds to a different instance
         # with 0 being background
         mask = Image.open(mask_path)
-        newMask = Image.open(newMask_path)
         # convert the PIL Image into a numpy array
         mask = np.array(mask)
-        newMask = np.array(newMask)
-
-        obj_ids = np.unique(newMask)
+        # instances are encoded as different colors
+        obj_ids = np.unique(mask)
+        # first id is the background, so remove it
         obj_ids = obj_ids[1:]
 
         # split the color-encoded mask into a set
@@ -75,12 +72,11 @@ class DataSet(object):
         num_objs = len(obj_ids)
         boxes = []
         for i in range(num_objs):
-            pos = np.where(mask)
+            pos = np.where(masks[i])
             xmin = np.min(pos[1])
             xmax = np.max(pos[1])
             ymin = np.min(pos[0])
             ymax = np.max(pos[0])
-            print(xmin, ymin, xmax, ymax)
             boxes.append([xmin, ymin, xmax, ymax])
 
         # convert everything into a torch.Tensor
@@ -114,18 +110,17 @@ class DataSet(object):
 def main():
     # train on the GPU or on the CPU, if a GPU is not available
     device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
-    print(device)
 
     # our dataset has two classes only - background and person
     num_classes = 2
     # use our dataset and defined transformations
-    dataset = DataSet('Small_data', get_transform(train=True))
-    dataset_test = DataSet('Small_data', get_transform(train=False))
+    dataset = DataSet('Origin_data', get_transform(train=True))
+    dataset_test = DataSet('Origin_data', get_transform(train=False))
 
     # split the dataset in train and test set
     indices = torch.randperm(len(dataset)).tolist()
     dataset = torch.utils.data.Subset(dataset, indices[:-50])
-    dataset_test = torch.utils.data.Subset(dataset_test, indices[-50:])
+    dataset_test = torch.utils.data.Subset(dataset_test, indices[:-50])
 
     # define training and validation data loaders
     data_loader = torch.utils.data.DataLoader(
@@ -159,13 +154,31 @@ def main():
         train_one_epoch(model, optimizer, data_loader, device, epoch, print_freq=10)
         # update the learning rate
         lr_scheduler.step()
+        print(data_loader_test)
         # evaluate on the test dataset
-        print("Evaluating...")
         evaluate(model, data_loader_test, device=device)
-        print("Evaluated!")
 
     print("That's it!")
 
 
+def test():
+    model = torchvision.models.detection.fasterrcnn_resnet50_fpn(pretrained=True)
+    dataset = DataSet('Origin_data', get_transform(train=True))
+    data_loader = torch.utils.data.DataLoader(
+        dataset, batch_size=2, shuffle=True, num_workers=4,
+        collate_fn=utils.collate_fn)
+    # For Training
+    images, targets = next(iter(data_loader))
+    images = list(image for image in images)
+    targets = [{k: v for k, v in t.items()} for t in targets]
+    output = model(images, targets)  # Returns losses and detections
+    # For inference
+    model.eval()
+    x = [torch.rand(3, 300, 400), torch.rand(3, 500, 400)]
+    predictions = model(x)  # Returns predictions
+    print(output, predictions)
+
+
 if __name__ == '__main__':
     main()
+    # test()
