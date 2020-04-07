@@ -5,10 +5,10 @@ import torch
 import torchvision
 from torchvision.models.detection.faster_rcnn import FastRCNNPredictor
 from torchvision.models.detection.mask_rcnn import MaskRCNNPredictor
-import torchvision.transforms.transforms as T
 from PIL import Image
 from torch_github.engine import train_one_epoch, evaluate
-from torch_github import transforms as T
+import torchvision.transforms.transforms as T
+# from torch_github import transforms as T
 import cv2
 
 def get_transform(train):
@@ -109,7 +109,8 @@ class DataSet(object):
 
 def main():
     # train on the GPU or on the CPU, if a GPU is not available
-    device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
+    gpu = True
+    device = torch.device('cuda') if torch.cuda.is_available() and gpu else torch.device('cpu')
 
     # our dataset has two classes only - background and person
     num_classes = 2
@@ -120,7 +121,7 @@ def main():
     # split the dataset in train and test set
     indices = torch.randperm(len(dataset)).tolist()
     dataset = torch.utils.data.Subset(dataset, indices[:-50])
-    dataset_test = torch.utils.data.Subset(dataset_test, indices[:-50])
+    dataset_test = torch.utils.data.Subset(dataset_test, indices[-50:])
 
     # define training and validation data loaders
     data_loader = torch.utils.data.DataLoader(
@@ -147,38 +148,99 @@ def main():
                                                    gamma=0.1)
 
     # let's train it for 10 epochs
-    num_epochs = 10
-
+    num_epochs = 4
+    crashed = False
     for epoch in range(num_epochs):
         # train for one epoch, printing every 10 iterations
-        train_one_epoch(model, optimizer, data_loader, device, epoch, print_freq=10)
+        epoch = epoch - 1 if crashed else epoch
+        try:
+            train_one_epoch(model, optimizer, data_loader, device, epoch, print_freq=10)
+        except:
+            print("!!!!!!!GPU memory error!!!!!!!")
+            crashed = True
+            continue
+        crashed = False
         # update the learning rate
         lr_scheduler.step()
-        print(data_loader_test)
         # evaluate on the test dataset
         evaluate(model, data_loader_test, device=device)
+    torch.save(model, "model.pt")
 
     print("That's it!")
 
 
 def test():
+    # root = 'Origin_data'
+    # imgs = list(sorted(os.listdir(os.path.join(root, "Images"))))
+    # img_path = os.path.join(root, "Images", imgs[1])
+    # img = Image.open(img_path).convert("RGB")
+    # img = np.array(img)
+    # print(img.shape)
+    # # for i in range(-2, 2):
+    # #     for k in range(-2, 2):
+    # #         print(i, k)
+    # #         print(np.moveaxis(img, i, k).shape)
+    # # 1 -1
+    # # (414, 3, 455)
+    # # 0 -2
+    # # (455, 414, 3)
+    # img = np.moveaxis(img, 1, -1)
+    # img = np.moveaxis(img, 0, -2)
+    # img = np.moveaxis(img, 1, -1)
+    # print(img.shape)
+    # img = torch.from_numpy(img)
+    # test_value = img.cuda()
+    # test_value = test_value.float()
+    # test_value = test_value.unsqueeze(0)
+    # print(test_value.shape)
+    # print(img.shape)
+    # # return
+    # # img = np.reshape(h, w, 1)
+    # # img = [torch.from_numpy(img).to(device='cuda')]
+    # # device = torch.device('cuda')
+    # # model = torch.load("model.pt")
+    # model = torchvision.models.detection.fasterrcnn_resnet50_fpn(pretrained=True)
+    # device = torch.device('cuda')
+    # model.to(device)
+    # model.eval()
+    # print(type(model))
+    # # transforms = []
+    # # transforms.append(test_value)
+    # x = [torch.rand(3, 300, 400).cuda(), torch.rand(3, 500, 400).cuda()]
+    # predictions = model(x)  # Returns predictions
+    # print(predictions)
     model = torchvision.models.detection.fasterrcnn_resnet50_fpn(pretrained=True)
-    dataset = DataSet('Origin_data', get_transform(train=True))
-    data_loader = torch.utils.data.DataLoader(
-        dataset, batch_size=2, shuffle=True, num_workers=4,
-        collate_fn=utils.collate_fn)
-    # For Training
-    images, targets = next(iter(data_loader))
-    images = list(image for image in images)
-    targets = [{k: v for k, v in t.items()} for t in targets]
-    output = model(images, targets)  # Returns losses and detections
+    # dataset = DataSet('Origin_data', get_transform(train=True))
+    # data_loader = torch.utils.data.DataLoader(
+    #     dataset, batch_size=2, shuffle=True, num_workers=4,
+    #     collate_fn=utils.collate_fn)
+    # # For Training
+    # images, targets = next(iter(data_loader))
+    # images = list(image for image in images)
+    # targets = [{k: v for k, v in t.items()} for t in targets]
+    # output = model(images, targets)  # Returns losses and detections
+    # print(output)
     # For inference
     model.eval()
     x = [torch.rand(3, 300, 400), torch.rand(3, 500, 400)]
     predictions = model(x)  # Returns predictions
-    print(output, predictions)
+    print(predictions)
 
+def get_prediction(img_path, threshold):
+    model = torch.load("model.pt")
+    model.eval()
+    img = Image.open(img_path) # Load the image
+    transform = T.Compose([T.ToTensor()]) # Defing PyTorch Transform
+    img = transform(img).cuda() # Apply the transform to the image
+    pred = model([img]) # Pass the image to the model
+    print(pred)
+    # pred_boxes = [[(i[0], i[1]), (i[2], i[3])] for i in list(pred[0]['boxes'].detach().numpy())] # Bounding boxes
+    # pred_score = list(pred[0]['scores'].detach().numpy())
+    # pred_t = [pred_score.index(x) for x in pred_score if x > threshold][-1] # Get list of index with score greater than threshold.
+    # pred_boxes = pred_boxes[:pred_t+1]
+    # return pred_boxes
 
 if __name__ == '__main__':
-    main()
+    # main()
     # test()
+    get_prediction("C:\\Users\\1\\PycharmProjects\\SERVER\\ML\\mlg\\ok-recognition\\Origin_data\\Images\FudanPed00001.png", 1)
