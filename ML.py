@@ -10,6 +10,7 @@ from torch_github.engine import train_one_epoch, evaluate
 import torchvision.transforms.transforms as T
 # from torch_github import transforms as T
 import cv2
+from matplotlib import cm
 
 def get_transform(train):
     transforms = []
@@ -169,78 +170,30 @@ def main():
     print("That's it!")
 
 
-def test():
-    # root = 'Origin_data'
-    # imgs = list(sorted(os.listdir(os.path.join(root, "Images"))))
-    # img_path = os.path.join(root, "Images", imgs[1])
-    # img = Image.open(img_path).convert("RGB")
-    # img = np.array(img)
-    # print(img.shape)
-    # # for i in range(-2, 2):
-    # #     for k in range(-2, 2):
-    # #         print(i, k)
-    # #         print(np.moveaxis(img, i, k).shape)
-    # # 1 -1
-    # # (414, 3, 455)
-    # # 0 -2
-    # # (455, 414, 3)
-    # img = np.moveaxis(img, 1, -1)
-    # img = np.moveaxis(img, 0, -2)
-    # img = np.moveaxis(img, 1, -1)
-    # print(img.shape)
-    # img = torch.from_numpy(img)
-    # test_value = img.cuda()
-    # test_value = test_value.float()
-    # test_value = test_value.unsqueeze(0)
-    # print(test_value.shape)
-    # print(img.shape)
-    # # return
-    # # img = np.reshape(h, w, 1)
-    # # img = [torch.from_numpy(img).to(device='cuda')]
-    # # device = torch.device('cuda')
-    # # model = torch.load("model.pt")
-    # model = torchvision.models.detection.fasterrcnn_resnet50_fpn(pretrained=True)
-    # device = torch.device('cuda')
-    # model.to(device)
-    # model.eval()
-    # print(type(model))
-    # # transforms = []
-    # # transforms.append(test_value)
-    # x = [torch.rand(3, 300, 400).cuda(), torch.rand(3, 500, 400).cuda()]
-    # predictions = model(x)  # Returns predictions
-    # print(predictions)
-    model = torchvision.models.detection.fasterrcnn_resnet50_fpn(pretrained=True)
-    # dataset = DataSet('Origin_data', get_transform(train=True))
-    # data_loader = torch.utils.data.DataLoader(
-    #     dataset, batch_size=2, shuffle=True, num_workers=4,
-    #     collate_fn=utils.collate_fn)
-    # # For Training
-    # images, targets = next(iter(data_loader))
-    # images = list(image for image in images)
-    # targets = [{k: v for k, v in t.items()} for t in targets]
-    # output = model(images, targets)  # Returns losses and detections
-    # print(output)
-    # For inference
-    model.eval()
-    x = [torch.rand(3, 300, 400), torch.rand(3, 500, 400)]
-    predictions = model(x)  # Returns predictions
-    print(predictions)
-
-def get_prediction(img_path, threshold):
+def get_prediction(img_path):
     model = torch.load("model.pt")
     model.eval()
     img = Image.open(img_path) # Load the image
     transform = T.Compose([T.ToTensor()]) # Defing PyTorch Transform
     img = transform(img).cuda() # Apply the transform to the image
     pred = model([img]) # Pass the image to the model
-    print(pred)
+    masks = pred[0]['masks']
+    masks = masks.cpu().detach().numpy()
+    for i in range(len(masks)):
+        mask = masks[i]
+        mask = mask[0]
+        mask = np.uint8(cm.gist_earth(mask)*255)
+        print(mask.shape)
+        cv2.imwrite('MACHINE LEARNING POOP/AAAA{}.png'.format(i), mask)
+
     # pred_boxes = [[(i[0], i[1]), (i[2], i[3])] for i in list(pred[0]['boxes'].detach().numpy())] # Bounding boxes
     # pred_score = list(pred[0]['scores'].detach().numpy())
     # pred_t = [pred_score.index(x) for x in pred_score if x > threshold][-1] # Get list of index with score greater than threshold.
     # pred_boxes = pred_boxes[:pred_t+1]
     # return pred_boxes
 
+
 if __name__ == '__main__':
     # main()
     # test()
-    get_prediction("C:\\Users\\1\\PycharmProjects\\SERVER\\ML\\mlg\\ok-recognition\\Origin_data\\Images\FudanPed00001.png", 1)
+    get_prediction("IMG_8011.jpg")
