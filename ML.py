@@ -7,8 +7,8 @@ from torchvision.models.detection.faster_rcnn import FastRCNNPredictor
 from torchvision.models.detection.mask_rcnn import MaskRCNNPredictor
 from PIL import Image
 from torch_github.engine import train_one_epoch, evaluate
-import torchvision.transforms.transforms as T
-# from torch_github import transforms as T
+import torchvision.transforms.transforms as Trans
+from torch_github import transforms as T
 import cv2
 from matplotlib import cm
 
@@ -60,6 +60,8 @@ class DataSet(object):
         mask = Image.open(mask_path)
         # convert the PIL Image into a numpy array
         mask = np.array(mask)
+        # Converts amit's RGB image to a grayscale image like expected
+        mask = cv2.cvtColor(mask, cv2.COLOR_BGR2GRAY)
         # instances are encoded as different colors
         obj_ids = np.unique(mask)
         # first id is the background, so remove it
@@ -68,9 +70,9 @@ class DataSet(object):
         # split the color-encoded mask into a set
         # of binary masks
         masks = mask == obj_ids[:, None, None]
-
         # get bounding box coordinates for each mask
         num_objs = len(obj_ids)
+
         boxes = []
         for i in range(num_objs):
             pos = np.where(masks[i])
@@ -108,7 +110,7 @@ class DataSet(object):
         return len(self.imgs)
 
 
-def main():
+def main(folder):
     # train on the GPU or on the CPU, if a GPU is not available
     gpu = True
     device = torch.device('cuda') if torch.cuda.is_available() and gpu else torch.device('cpu')
@@ -116,8 +118,8 @@ def main():
     # our dataset has two classes only - background and person
     num_classes = 2
     # use our dataset and defined transformations
-    dataset = DataSet('Origin_data', get_transform(train=True))
-    dataset_test = DataSet('Origin_data', get_transform(train=False))
+    dataset = DataSet(folder, get_transform(train=True))
+    dataset_test = DataSet(folder, get_transform(train=False))
 
     # split the dataset in train and test set
     indices = torch.randperm(len(dataset)).tolist()
@@ -156,7 +158,8 @@ def main():
         epoch = epoch - 1 if crashed else epoch
         try:
             train_one_epoch(model, optimizer, data_loader, device, epoch, print_freq=10)
-        except:
+        except Exception as E:
+            print(E)
             print("!!!!!!!GPU memory error!!!!!!!")
             crashed = True
             continue
@@ -170,11 +173,11 @@ def main():
     print("That's it!")
 
 
-def get_prediction(img_path):
+def get_prediction(img_path, pred_name):
     model = torch.load("model.pt")
     model.eval()
     img = Image.open(img_path) # Load the image
-    transform = T.Compose([T.ToTensor()]) # Defing PyTorch Transform
+    transform = Trans.Compose([Trans.ToTensor()]) # Defing PyTorch Transform
     img = transform(img).cuda() # Apply the transform to the image
     pred = model([img]) # Pass the image to the model
     masks = pred[0]['masks']
@@ -184,7 +187,7 @@ def get_prediction(img_path):
         mask = mask[0]
         mask = np.uint8(cm.gist_earth(mask)*255)
         print(mask.shape)
-        cv2.imwrite('MACHINE LEARNING POOP/AAAA{}.png'.format(i), mask)
+        cv2.imwrite('MACHINE LEARNING POOP/{}{}.png'.format(pred_name, i), mask)
 
     # pred_boxes = [[(i[0], i[1]), (i[2], i[3])] for i in list(pred[0]['boxes'].detach().numpy())] # Bounding boxes
     # pred_score = list(pred[0]['scores'].detach().numpy())
@@ -194,6 +197,7 @@ def get_prediction(img_path):
 
 
 if __name__ == '__main__':
-    # main()
-    # test()
-    get_prediction("IMG_8011.jpg")
+    # main("Origin_data")
+    # main("Small_data")
+    # main("Training_data")
+    get_prediction("IMG_8020.jpg", "THIS IS MAYBE WORKING")
