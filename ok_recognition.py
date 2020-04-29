@@ -2,10 +2,6 @@ import numpy as np
 import cv2
 import time
 import pyautogui
-from matplotlib import pyplot as plt
-# from skimage.filters import threshold_yen
-# from skimage.exposure import rescale_intensity
-# from skimage.io import imread, imsave
 
 cap = cv2.VideoCapture(0)
 
@@ -61,10 +57,6 @@ def get_brightness(img):
     hsv = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
     _, _, v = cv2.split(hsv)
     return int(np.average(v.flatten()))
-# import pygame
-# pygame.init()
-# size = width, height = 200, 200
-# surface = pygame.display.set_mode(size)
 
 faceCascade = cv2.CascadeClassifier('haarcascade_frontalface_default.xml')
 range = 20
@@ -111,114 +103,101 @@ def weird_cascade(frame):
     print(min_YCrCb, max_YCrCb)
     return min_YCrCb, max_YCrCb
 
+
 active = True
 
 if not active:
     print("not active")
 while True:
-    # Capture frame-by-frame
 
-    # for event in pygame.event.get():
-    #     if event.type == pygame.QUIT:
-    #         done = True
-    #     mouse = list(pygame.mouse.get_pos())
-    #     alpha = map(mouse[0], 0, 200, 0, 3)
-    #     beta = map(mouse[1], 0, 200, 0, 100)
-    #     print(alpha, beta)
-    # pygame.display.flip()
+    ret, frame = cap.read()  # Get the frame from the camera, stored at the variable frame
 
-    ret, frame = cap.read()
+    image_YCrCb = cv2.cvtColor(frame, cv2.COLOR_BGR2YCR_CB)  # Convert the frame from RGB to YCrCb
 
-    # yen_threshold = threshold_yen(frame)
-    # frame = rescale_intensity(frame, (0, yen_threshold), (40, 230))
-
-    # brightness = map(get_brightness(frame), 70, 134, 0.7, 1)
-    # frame = gamma_correct(brightness, frame)
-
-    # gray1 = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-    image_YCrCb = cv2.cvtColor(frame, cv2.COLOR_BGR2YCR_CB)
+    #  Apply histogram equalization to the frame on the LUNA channel
     channels = cv2.split(image_YCrCb)
-    cv2.imshow('before', channels[0])
-    # cv2.equalizeHist(channels[0], channels[0])
+    cv2.imshow('grayscale', channels[0])  # Display the grayscale LUNA channel
     clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))
     clahe.apply(channels[0], channels[0])
 
-    # blur = cv2.GaussianBlur(channels[0], (5, 5), 0)
-    # ret3, channels[0] = cv2.threshold(blur, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
+    cv2.merge(channels, image_YCrCb)  # Apply the equalized LUNA channel to the rest of the frame
 
-    cv2.merge(channels, image_YCrCb)
-
-    # WEIRD MACHINE LEARNING TO GET COLOR OF FACE
-
-    # print(weird_cascade(frame))
+    # Set the lower and upper bounds for human skin tone in YCrCb
+    min_YCrCb = np.array([0, 133, 77], np.uint8)
+    max_YCrCb = np.array([235, 173, 127], np.uint8)
+    # Create a binary image containing only the pixels that fit between the human skin tone bounds
     skinRegionYCrCb = cv2.inRange(image_YCrCb, min_YCrCb, max_YCrCb)
 
+    # Apply morphological transformations (closing then opening) in order to remove noise
     skinRegionYCrCb = cv2.erode(skinRegionYCrCb, np.ones((3,3),np.uint8), iterations=iterations)
     skinRegionYCrCb = cv2.dilate(skinRegionYCrCb, np.ones((3,3),np.uint8), iterations=iterations)
     skinRegionYCrCb = cv2.dilate(skinRegionYCrCb, np.ones((3,3),np.uint8), iterations=iterations)
     skinRegionYCrCb = cv2.erode(skinRegionYCrCb, np.ones((3,3),np.uint8), iterations=iterations)
-
+    # Also apply Gaussian blur
     skinRegionYCrCb = cv2.GaussianBlur(skinRegionYCrCb, (5,5), 100)
 
+    # Combine the binary skin tone image with the RGB image to create an RGB image containing only skin tone pixels
     skinYCrCb = cv2.bitwise_and(frame, frame, mask = skinRegionYCrCb)
 
-    # Our operations on the frame come here
-
+    # Find the contours in the image
     contours, hierarchy = cv2.findContours(skinRegionYCrCb, cv2.RETR_CCOMP, cv2.CHAIN_APPROX_SIMPLE)
 
-    cv2.rectangle(frame, (0,0), (300,500-20), [0,0,255], 5)
-    good_contours = []
-    for cnt in contours:
+    # Draw the bounding box in which the contours are detected
+    cv2.rectangle(frame, (0,0), (rect_length,500-20), [0,0,255], 5)
+    good_contours = []  # An array in which only the contours in the bounding box are included
+    for cnt in contours:  # Put into good_contours only the contours that are in the bounding box
         x, y = get_center_contour(cnt)
         if x < rect_length:
             cv2.circle(frame, (x, y), 5, [255, 0, 0], -1)
             # cv2.putText(frame, str(get_area(cnt)), (x,y), cv2.FONT_HERSHEY_COMPLEX, 1, (255, 0, 0), 2, cv2.LINE_AA)
             good_contours.append(cnt)
+    # Sort the contours by area, so that the contour in index 0 is the largest contour
     good_contours.sort(key=get_area, reverse=True)
     try:
-        hand_contour = good_contours[0]
-        cv2.drawContours(frame, hand_contour, -1, (123, 255, 123), 3)
+        hand_contour = good_contours[0]  # The largest contour is assumed to be the contour of the hand being detected
+        cv2.drawContours(frame, hand_contour, -1, (123, 255, 123), 3)  # Draw the largest contour
     except:
-        hand_contour = None
-    very_good_contours = []
+        hand_contour = None  # If no contour appears in the bounding box
+    very_good_contours = []  # An array including all contours that are inside the largest hand contour
     for cnt in good_contours:
         x, y = get_center_contour(cnt)
         inside = False
         try:
+            # Find the contour whose father is the hand contour
             index_1 = hierarchy[0][contours.index(cnt)][3]
             index_2 = contours.index(hand_contour)
             if index_1 == index_2:
                 inside = True
         except ValueError:
             inside = True
-        # if cv2.contourArea(cnt) / (3.1415 * radius * radius) > 0.65 and get_area(cnt)/get_area(hand_contour) > 1/16:
-        # and get_area(cnt)/get_area(hand_contour) > 1/16
+
+        # Only include that contour inside of the list if it's area is under certain criteria
         if inside and get_area(cnt) / get_area(hand_contour) > 1/16 * get_area(hand_contour)/(rect_length*200):
-            cv2.circle(frame, (x, y), 5, [0, 0, 255], -1)
+            cv2.circle(frame, (x, y), 5, [0, 0, 255], -1)  # Draw a red dot in the middle of that contour
             very_good_contours.append(cnt)
         elif inside:
-            cv2.circle(frame, (x, y), 5, [0, 255, 0], -1)
+            cv2.circle(frame, (x, y), 5, [0, 255, 0], -1)  # Draw a green dot if it doesnt fit the area criteria
     try:
-        ok_contour = very_good_contours[0]
+        ok_contour = very_good_contours[0]  # The largest contour that fits the above criteria is the hole contour
     except:
         ok_contour = None
 
     if ok_contour is not None:
         x, y = get_center_contour(ok_contour)
+        # Get the topmost location of the hand contour
         topmost = tuple(hand_contour[hand_contour[:, :, 1].argmin()][0])
+        # If the program has just been initialized, initialize ty and dx, dy
         if just_appeared:
             dx, dy = 0, 0
             ty = 0
             just_appeared = False
+        # Else, calculate dx and dy (dx and dy are the change in position of the ok contour center,
+        # ty is the position of the topmost coordinate of the hand contour)
         else:
             dx = x - prev_x
             dy = y - prev_y
             ty = topmost[1] - prev_ty
-            # if ty > 28:
-            #     # Implemented index finger right click activation
-            #     pyautogui.click(button='right')
-            #     print(ty)
-            if abs(ty) > 25 and active:
+            if abs(ty) > 25 and active:  # If ty has changed a lot, scroll the mouse wheel
                 pyautogui.scroll(-int(ty*12))
                 cv2.circle(frame, topmost, 5, [0, 50, 0], -1)
         prev_x, prev_y = x, y
@@ -228,30 +207,34 @@ while True:
 
     if ok_contour is not None and dx is not None:
         if True:
-            # Move mouse
+            # Move the mouse according to dx and dy, unless the ok contour reappeared recently
             if active and not time.time() - ok_time < 0.2 and dx < 200 and dy < 200:
                 pyautogui.move(-dx*multiplier, dy*multiplier)
+            # If it didn't, remember the time so we can know if it will reappear quickly in the future
             if pressed is False:
                 ok_time = time.time()
                 pressed = True
     elif pressed is True:
         pressed = False
+        # If the contour did reappear recently, click the mouse.
         destiny = time.time() - ok_time
         if 0.16 < destiny < 0.4 and active:
             print(destiny)
             # Click
             pyautogui.click()
 
-    # Display the resulting frame
-    cv2.imshow('FaceDetection', cv2.flip(frame, 1))
-    cv2.imshow('cool', cv2.flip(skinYCrCb, 1))
-    # cv2.imshow('a', cv2.flip(imageYCrCb, 1))
-    # cv2.imshow('AAAA', cv2.flip(hsvImg, 1))
+    cv2.imshow('FaceDetection', cv2.flip(frame, 1))  # Display the frame containing the hand contours drawn
+    cv2.imshow('No skin', cv2.flip(skinYCrCb, 1))  # Display the frame only containing human skin
     key = cv2.waitKey(1) & 0xFF
     if key == ord('q'):
+        # Enable the experimental night adaptation mode on the press of the "Q" button,
+        # which changes the skin tone colors if the program is having a hard time detecting hands under difficult
+        # light conditions.
         min_YCrCb, max_YCrCb = weird_cascade(frame)
     elif key == ord('w'):
+        # Close the program on the press of the "W" button.
         break
-# When everything done, release the capture
+
+# When the program is closed, release the capture and close all windows.
 cap.release()
 cv2.destroyAllWindows()
