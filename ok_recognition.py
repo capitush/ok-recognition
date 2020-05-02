@@ -14,8 +14,6 @@ multiplier = 2
 min_YCrCb = np.array([0,133,77],np.uint8)
 max_YCrCb = np.array([235,173,127],np.uint8)
 
-min_hsv = np.array([108, 23, 82], np.uint8)
-max_hsv = np.array([179, 255, 255], np.uint8)
 prev_x, prev_y = None, None
 dx, dy = None, None
 ok_time = time.time()

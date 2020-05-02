@@ -67,16 +67,16 @@ cap = cv2.VideoCapture(0)
 
 
 while True:
-
+    root = "Training_data"
     ret, pic = cap.read()
     name = random_string(8)  # Get a random name for the image
-    cv2.imwrite("Training_data/Images/i{}.png".format(name), pic)  # Save the original image in "Images"
+    cv2.imwrite(root + "/Images/i{}.png".format(name), pic)  # Save the original image in "Images"
     try:
         height, width, channels = pic.shape  # Get the correct dimensions of the image
         blank_image = np.zeros((height, width, channels), np.uint8)  # Make an empty black picture
         # Draw the contour of the hand on the empty picture. The contours color is the binary image color of 1:
         cv2.drawContours(blank_image, [get_contour(pic)], -1, (1, 1, 1), -1)
-        cv2.imwrite("Training_data/Masks/i{}.png".format(name), blank_image)  # Save the binary image in "masks"
+        cv2.imwrite(root + "/Masks/i{}.png".format(name), blank_image)  # Save the binary image in "masks"
     except cv2.error:
         pass
     cv2.imshow('camera', cv2.flip(pic, 1))
