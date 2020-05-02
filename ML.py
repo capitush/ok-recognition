@@ -11,7 +11,6 @@ import torchvision.transforms.transforms as Trans
 from torch_github import transforms as T
 import cv2
 from matplotlib import cm
-import time
 
 def get_transform(train):
     transforms = []
@@ -20,8 +19,6 @@ def get_transform(train):
         transforms.append(T.RandomHorizontalFlip(0.5))
     return T.Compose(transforms)
 
-
-hidden_layer = 256
 
 def get_model_instance_segmentation(num_classes):
     # load an instance segmentation model pre-trained pre-trained on COCO
@@ -34,6 +31,7 @@ def get_model_instance_segmentation(num_classes):
 
     # now get the number of input features for the mask classifier
     in_features_mask = model.roi_heads.mask_predictor.conv5_mask.in_channels
+    hidden_layer = 256
     # and replace the mask predictor with a new one
     model.roi_heads.mask_predictor = MaskRCNNPredictor(in_features_mask,
                                                        hidden_layer,
@@ -113,7 +111,6 @@ class DataSet(object):
 
 
 def main(folder):
-    print("The number of layers is ", hidden_layer)
     # train on the GPU or on the CPU, if a GPU is not available
     gpu = True
     device = torch.device('cuda') if torch.cuda.is_available() and gpu else torch.device('cpu')
@@ -176,32 +173,41 @@ def main(folder):
     print("That's it!")
 
 
-def get_prediction(img_path, pred_name):
-    model = torch.load("model.pt")
+def get_prediction(img_path):
+    model = torch.load("model.pt") if torch.cuda.is_available() else torch.load("model.pt", map_location=torch.device('cpu'))
     model.eval()
     img = Image.open(img_path) # Load the image
-    # img = Image.fromarray(img)
     transform = Trans.Compose([Trans.ToTensor()]) # Defing PyTorch Transform
-    img = transform(img).cuda() # Apply the transform to the image
-    for i in range(3):
-        start = time.time()
-        print("Predicting...", img.shape)
-        pred = model([img]) # Pass the image to the model
-        print("Predicted", time.time() - start)
+    img = transform(img).cuda() if torch.cuda.is_available() else transform(img)# Apply the transform to the image
+    pred = model([img]) # Pass the image to the model
     masks = pred[0]['masks']
     masks = masks.cpu().detach().numpy()
     for i in range(len(masks)):
         mask = masks[i]
         mask = mask[0]
         mask = np.uint8(cm.gist_earth(mask)*255)
-        print(i, mask.shape)
         pic = Image.fromarray(mask)
-        pic.show()
-        # cv2.imwrite('Network Outputs/{}{}.png'.format(pred_name, i), mask)
+        if i < 1:
+            pic.show()
+        else:
+            break
+
+
+def pic_taker():
+    cap = cv2.VideoCapture(0)
+    while True:
+        ret, frame = cap.read()
+        cv2.imshow("camera", frame)
+        key = cv2.waitKey(1) & 0xFF
+
+        if key == ord('w'):
+            cv2.imwrite("pic.png", frame)
+            get_prediction("pic.png")
 
 
 if __name__ == '__main__':
     # main("Origin_data")
     # main("Small_data")
     # main("Training_data")
-    get_prediction("C:\\Users\\1\Downloads\\lothair.jpg", "aang.png")
+    # get_prediction("IMG_8020.jpg", "THIS IS MAYBE WORKING")
+    pic_taker()
