@@ -223,7 +223,7 @@ while True:
             # Click
             pyautogui.click()
 
-    cv2.imshow('FaceDetection', cv2.flip(frame, 1))  # Display the frame containing the hand contours drawn
+    cv2.imshow('Ok Detection', cv2.flip(frame, 1))  # Display the frame containing the hand contours drawn
     cv2.imshow('No skin', cv2.flip(skinYCrCb, 1))  # Display the frame only containing human skin
     key = cv2.waitKey(1) & 0xFF
     if key == ord('q'):
