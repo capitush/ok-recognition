@@ -173,12 +173,12 @@ def main(folder):
     print("That's it!")
 
 
-def get_prediction(img_path, pred_name):
-    model = torch.load("model.pt")
+def get_prediction(img_path):
+    model = torch.load("model.pt") if torch.cuda.is_available() else torch.load("model.pt", map_location=torch.device('cpu'))
     model.eval()
     img = Image.open(img_path) # Load the image
     transform = Trans.Compose([Trans.ToTensor()]) # Defing PyTorch Transform
-    img = transform(img).cuda() # Apply the transform to the image
+    img = transform(img).cuda() if torch.cuda.is_available() else transform(img)# Apply the transform to the image
     pred = model([img]) # Pass the image to the model
     masks = pred[0]['masks']
     masks = masks.cpu().detach().numpy()
@@ -186,18 +186,28 @@ def get_prediction(img_path, pred_name):
         mask = masks[i]
         mask = mask[0]
         mask = np.uint8(cm.gist_earth(mask)*255)
-        print(mask.shape)
-        cv2.imwrite('MACHINE LEARNING POOP/{}{}.png'.format(pred_name, i), mask)
+        pic = Image.fromarray(mask)
+        if i < 1:
+            pic.show()
+        else:
+            break
 
-    # pred_boxes = [[(i[0], i[1]), (i[2], i[3])] for i in list(pred[0]['boxes'].detach().numpy())] # Bounding boxes
-    # pred_score = list(pred[0]['scores'].detach().numpy())
-    # pred_t = [pred_score.index(x) for x in pred_score if x > threshold][-1] # Get list of index with score greater than threshold.
-    # pred_boxes = pred_boxes[:pred_t+1]
-    # return pred_boxes
+
+def pic_taker():
+    cap = cv2.VideoCapture(0)
+    while True:
+        ret, frame = cap.read()
+        cv2.imshow("camera", frame)
+        key = cv2.waitKey(1) & 0xFF
+
+        if key == ord('w'):
+            cv2.imwrite("pic.png", frame)
+            get_prediction("pic.png")
 
 
 if __name__ == '__main__':
     # main("Origin_data")
     # main("Small_data")
     # main("Training_data")
-    get_prediction("IMG_8020.jpg", "THIS IS MAYBE WORKING")
+    # get_prediction("IMG_8020.jpg", "THIS IS MAYBE WORKING")
+    pic_taker()
