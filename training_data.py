@@ -89,7 +89,7 @@ while True:
         blank_image = np.zeros((height, width, channels), np.uint8)
         cv2.rectangle(blank_image, (0,0), (width,height), (255,0,0), -1)
         cv2.drawContours(blank_image, [get_contour()], -1, (123, 255, 123), -1)
-        cv2.imwrite("Training_data/Masks/i{}.png".format(name), blank_image)
+        cv2.imwrite("Training_data/oldMasks/i{}.png".format(name), blank_image)
     except cv2.error:
         pass
     cv2.imshow('a', cv2.flip(blank_image, 1))
